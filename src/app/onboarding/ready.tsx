@@ -21,7 +21,7 @@ export default function ReadyScreen() {
           <Text style={styles.heroText}>Your penguin buddy is ready to help you build better habits.</Text>
         </View>
 
-        <Pressable style={styles.primaryButton} onPress={() => router.push('/explore')}>
+        <Pressable style={styles.primaryButton} onPress={() => router.push('/paywall/value-teaser')}>
           <Text style={styles.primaryButtonText}>Start now</Text>
         </Pressable>
       </View>
