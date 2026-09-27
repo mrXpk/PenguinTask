@@ -1,0 +1,492 @@
+HabitFlow — Habit Tracker PRD
+1. Product Overview
+
+App name: HabitFlow
+Platform: Mobile
+Framework: React Native + Expo
+Target: iOS & Android
+Backend: None for V1
+Storage: Local device storage
+Authentication: None
+
+Core idea
+
+A simple but polished habit tracker where users can:
+
+Create habits
+Track daily completion
+Maintain streaks
+See weekly/monthly progress
+Edit or delete habits
+View habit history
+Manage basic app settings
+
+The app should feel like a real consumer mobile app, not a demo or developer prototype.
+
+2. Navigation Structure
+
+Use a bottom tab navigation with 3 main tabs:
+
+Home
+  ↓
+Progress
+  ↓
+Settings
+
+There should also be a prominent "+" button on the Home screen for creating a habit.
+
+Navigation map
+Launch
+   ↓
+Home
+ ┌──────┼─────────┐
+ ↓      ↓         ↓
+Add    Habit     Progress
+Habit  Details      ↓
+ ↓       ↓       History
+Home    Edit
+        Habit
+
+Home
+ ↓
+Settings
+ ├── Appearance
+ ├── Notifications
+ └── About
+3. Screen List
+Screen 1 — Launch / Splash
+Purpose
+
+Give the app a polished startup experience.
+
+Elements
+HabitFlow logo
+App name
+Short tagline
+Simple animation/fade
+Automatically transition to Home
+Example tagline
+
+Build better days, one habit at a time.
+
+No login or onboarding is required.
+
+4. Screen 2 — Home Dashboard
+
+This is the main screen and most important screen.
+
+Header
+Greeting
+Current date
+Small profile/settings icon
+
+Example:
+
+Good morning 👋
+Saturday, September 26
+
+Your habits
+Today's Progress
+
+Display:
+
+Completed habits
+Total habits
+Progress percentage
+Circular or horizontal progress indicator
+
+Example:
+
+TODAY'S PROGRESS
+
+      4 / 6
+       67%
+
+████████████░░░░
+Habit List
+
+Each habit card should contain:
+
+Habit icon
+Habit name
+Current streak
+Today's completion state
+Completion button/checkmark
+
+Example:
+
+💧  Drink Water
+    🔥 7 day streak                 ✓
+
+📚  Study
+    🔥 12 day streak               ○
+
+🏃  Exercise
+    🔥 5 day streak                ○
+Interactions
+
+Tapping the completion button:
+
+Marks the habit complete
+Updates progress
+Updates streak
+Gives subtle visual feedback
+
+Tapping the habit card:
+
+→ Opens Habit Details
+
+Floating Add Button
+
+A prominent + button:
+
+                +
+
+→ Opens Create Habit
+
+Bottom Navigation
+⌂ Home     ◉ Progress     ⚙ Settings
+5. Screen 3 — Create Habit
+
+Opened by:
+
+Home → +
+
+Fields
+Habit Name
+
+Example:
+
+Read 20 minutes
+
+Icon
+
+Allow user to select from a small collection of icons.
+
+Examples:
+
+📚
+💧
+🏃
+🧘
+💪
+🥗
+🎯
+✍️
+Color
+
+Allow selection of a few predefined colors.
+
+Frequency
+
+Options:
+
+Every day
+Weekdays
+Custom
+
+For V1, custom can simply allow selecting individual weekdays.
+
+Bottom Button
+
+Create Habit
+
+After creation:
+
+→ Return to Home
+
+6. Screen 4 — Habit Details
+
+Opened by tapping a habit on Home.
+
+Header
+Back button
+Habit icon
+Habit name
+Edit button
+Statistics
+
+Display:
+
+Current Streak
+12 days
+
+Best Streak
+24 days
+
+Completion Rate
+82%
+Calendar / History
+
+Show a simple monthly calendar.
+
+Completed days should be visually distinguished.
+
+Example:
+
+September
+
+M  T  W  T  F  S  S
+1  2  3  ✓  ✓  ✓  7
+8  ✓  ✓  ✓  12 13 14
+...
+Actions
+Edit Habit
+Delete Habit
+
+Deleting should require confirmation.
+
+7. Screen 5 — Edit Habit
+
+Almost identical to Create Habit.
+
+Allow the user to modify:
+
+Name
+Icon
+Color
+Frequency
+
+Buttons:
+
+Save Changes
+
+Delete Habit
+
+8. Screen 6 — Progress
+
+Bottom navigation:
+
+Home → Progress
+
+Header
+Your Progress
+Overview
+
+Show:
+
+Total habits
+Today's completion
+Current streak
+Overall completion rate
+Weekly Overview
+
+Display a simple 7-day chart.
+
+Example:
+
+Mon  ███████
+Tue  █████
+Wed  ███████
+Thu  ███
+Fri  ███████
+Sat  █████
+Sun  ██
+Habit Performance
+
+List habits with:
+
+📚 Study
+82% completion
+
+💧 Water
+91% completion
+
+🏃 Exercise
+64% completion
+
+Tapping a habit:
+
+→ Habit Details
+
+9. Screen 7 — Settings
+
+Bottom navigation:
+
+Home → Settings
+
+Sections
+General
+Appearance
+Start of week
+Data
+Notifications
+Daily reminder
+Reminder time
+Data
+Reset all data
+About
+About HabitFlow
+Version
+
+Keep settings functional where possible.
+
+10. Screen 8 — Appearance
+
+Options:
+
+Appearance
+
+○ System
+○ Light
+○ Dark
+
+Changing the setting should immediately update the interface.
+
+11. Screen 9 — Notifications
+
+Allow users to toggle:
+
+Daily Reminder       ON/OFF
+
+Reminder Time        8:00 PM
+
+For V1, if actual notifications aren't implemented, the UI should still be structured so notification functionality can be added later.
+
+12. Empty States
+
+The app must not look broken when there are no habits.
+
+First-time Home
+
+Show:
+
+No habits yet
+
+Start building your routine
+by creating your first habit.
+
+        + Create Habit
+
+After creating the first habit, the normal dashboard appears.
+
+13. Core User Flow
+First-time user
+Launch
+ ↓
+Home
+ ↓
+Create Habit
+ ↓
+Enter habit information
+ ↓
+Create Habit
+ ↓
+Home
+ ↓
+Complete habit
+ ↓
+Progress updates
+Returning user
+Launch
+ ↓
+Home
+ ↓
+Mark habits complete
+ ↓
+View Progress
+ ↓
+View Habit Details
+14. Data Model
+
+Each habit should roughly contain:
+
+Habit
+├── id
+├── name
+├── icon
+├── color
+├── frequency
+├── createdAt
+├── completedDates[]
+└── reminder
+
+The app should calculate:
+
+Current streak
+Best streak
+Completion rate
+Daily progress
+Weekly progress
+
+from the stored completion data.
+
+15. Technical Requirements
+Framework
+React Native
+Expo
+Expo Router or React Navigation
+Storage
+
+Use local persistence such as:
+
+AsyncStorage
+
+No backend.
+
+State
+
+Use a simple state-management approach appropriate for a small app.
+
+Components
+
+Create reusable components such as:
+
+HabitCard
+ProgressCard
+ProgressBar
+Calendar
+BottomTabBar
+IconPicker
+ColorPicker
+EmptyState
+Requirements
+Responsive mobile layout
+Android and iOS compatible
+Expo Go compatible
+No unnecessary dependencies
+No authentication
+No external API
+Persist data after app restart
+16. Design Direction
+
+The visual style should be:
+
+Modern + clean + friendly + premium
+
+Avoid:
+
+Overly futuristic UI
+Neon colors
+Excessive gradients
+Excessive glassmorphism
+Cluttered dashboards
+
+Use:
+
+Strong typography
+Generous spacing
+Rounded cards
+Clear hierarchy
+Subtle animations
+Consistent iconography
+Good empty states
+Smooth completion interactions
+
+The app should look like something that could realistically be published on the App Store / Play Store.
+
+17. V1 Success Criteria
+
+The app is considered complete when a user can:
+
+Open the app.
+Create a habit.
+See it on the Home dashboard.
+Mark it complete.
+Have the completion persist after restarting the app.
+See their streak update.
+View historical completion.
+Edit the habit.
+Delete the habit.
+View overall progress.
+Change basic settings.
