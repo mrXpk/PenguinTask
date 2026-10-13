@@ -1,325 +1,81 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
-
 export type HabitFrequency = 'daily' | 'weekdays' | 'custom';
-
+export type Reminder = { enabled: boolean; hour: number; minute: number };
+export type CategoryId = 'water' | 'study' | 'exercise' | 'food' | 'read' | 'meditate' | 'custom';
 export type Habit = {
-  id: string;
-  name: string;
-  icon: string;
-  color: string;
-  createdAt: string;
-  completedDates: string[];
-  frequency?: HabitFrequency;
-  customDays?: number[];
-  note?: string;
+  id: string; name: string; icon: string; categoryId: CategoryId; color: string;
+  createdAt: string; completedDates: string[]; frequency: HabitFrequency;
+  customDays: number[]; note: string; reminder?: Reminder;
 };
-
 export const STORAGE_KEY = 'habit-tracker-v1';
-export const DEFAULT_FREQUENCY: HabitFrequency = 'daily';
-export const FREQUENCY_OPTIONS: HabitFrequency[] = ['daily', 'weekdays', 'custom'];
 export const WEEKDAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-
-export type HabitTemplate = {
-  id: string;
-  name: string;
-  icon: string;
-  color: string;
-  note: string;
-  frequency: HabitFrequency;
-};
-
-export const HABIT_TEMPLATES: HabitTemplate[] = [
-  { id: 'water', name: 'Drink water', icon: '💧', color: '#4CC9F0', note: 'A quick reset for the day.', frequency: 'daily' },
-  { id: 'read', name: 'Read 20 minutes', icon: '📚', color: '#FFB703', note: 'Small progress compounds.', frequency: 'daily' },
-  { id: 'stretch', name: 'Stretch', icon: '🧘', color: '#8AC926', note: 'Loosen up and reset the body.', frequency: 'weekdays' },
-  { id: 'walk', name: 'Walk outside', icon: '🚶', color: '#F77F00', note: 'Fresh air and steady momentum.', frequency: 'daily' },
-  { id: 'meditate', name: 'Meditate', icon: '🧠', color: '#C77DFF', note: 'A calm reset before the next task.', frequency: 'daily' },
-  { id: 'journal', name: 'Journal', icon: '✍️', color: '#00C2A8', note: 'Capture a few honest thoughts.', frequency: 'daily' },
+export const CATEGORIES: { id: CategoryId; name: string; icon: string; color: string }[] = [
+  { id: 'water', name: 'Drink Water', icon: 'water', color: '#43A9D1' },
+  { id: 'study', name: 'Study', icon: 'book', color: '#AA71D4' },
+  { id: 'exercise', name: 'Exercise', icon: 'barbell', color: '#EE7A5C' },
+  { id: 'food', name: 'Healthy Food', icon: 'leaf', color: '#78A968' },
+  { id: 'read', name: 'Read Book', icon: 'library', color: '#EAB247' },
+  { id: 'meditate', name: 'Meditate', icon: 'sunny', color: '#E7B445' },
+  { id: 'custom', name: 'My Habit', icon: 'sparkles', color: '#689CBA' },
 ];
-
-export const ICON_OPTIONS = [
-  '✨',
-  '🌞',
-  '💧',
-  '📚',
-  '🧘',
-  '🏃',
-  '💪',
-  '🌱',
-  '🎨',
-  '🎵',
-  '📖',
-  '🧠',
-  '🧼',
-  '🍎',
-  '🚴',
-  '😴',
-  '🎯',
-  '❤️',
-  '🚀',
-  '🌈',
-  '🔥',
-  '🥗',
-  '🧴',
-  '🧺',
-  '☕',
-  '📓',
-  '🧾',
-  '🧵',
-  '🎧',
-  '🧢',
-  '😌',
-  '💎',
-  '🫧',
-  '🌊',
-  '🧘‍♀️',
-  '🌿',
-  '🪴',
-  '🧖',
-  '🚿',
-  '🏋️',
-];
-
-export const COLOR_OPTIONS = [
-  '#FF6B6B',
-  '#FFB703',
-  '#7BDFF2',
-  '#4CC9F0',
-  '#8AC926',
-  '#00C2A8',
-  '#C77DFF',
-  '#F77F00',
-  '#7F5AF0',
-  '#06D6A0',
-  '#FFD166',
-  '#FF9F1C',
-  '#F72585',
-  '#3A86FF',
-  '#B5179E',
-  '#90BE6D',
-];
-
 export function getDateKey(date: Date) {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 }
-
-export function offsetDate(daysAgo: number) {
-  const date = new Date();
-  date.setHours(12, 0, 0, 0);
-  date.setDate(date.getDate() - daysAgo);
-  return getDateKey(date);
+export function dateFromKey(key: string) { return new Date(`${key}T12:00:00`); }
+export function dateOffset(date: Date, offset: number) {
+  const next = new Date(date); next.setHours(12, 0, 0, 0); next.setDate(next.getDate() + offset); return next;
 }
-
-export function getCurrentStreak(completedDates: string[]) {
-  const uniqueDates = Array.from(new Set(completedDates)).sort();
-  if (uniqueDates.length === 0) return 0;
-
-  let streak = 0;
-  let cursor = new Date();
-  cursor.setHours(12, 0, 0, 0);
-
-  while (true) {
-    const key = getDateKey(cursor);
-    if (!uniqueDates.includes(key)) break;
-    streak += 1;
-    cursor.setDate(cursor.getDate() - 1);
-  }
-
-  return streak;
+export function isDateKey(value: unknown): value is string {
+  return typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value) && getDateKey(dateFromKey(value)) === value;
 }
-
-export function getLongestStreak(completedDates: string[]) {
-  const uniqueDates = Array.from(new Set(completedDates)).sort();
-  if (uniqueDates.length === 0) return 0;
-
-  let longest = 1;
-  let running = 1;
-
-  for (let index = 1; index < uniqueDates.length; index += 1) {
-    const previous = new Date(`${uniqueDates[index - 1]}T12:00:00`);
-    const current = new Date(`${uniqueDates[index]}T12:00:00`);
-    const difference = Math.round((current.getTime() - previous.getTime()) / 86400000);
-
-    if (difference === 1) {
-      running += 1;
-      longest = Math.max(longest, running);
-    } else {
-      running = 1;
-    }
-  }
-
-  return longest;
-}
-
-export function normalizeHabit(habit: Partial<Habit>): Habit {
-  const frequency = habit.frequency ?? DEFAULT_FREQUENCY;
-
-  return {
-    id: habit.id ?? `habit-${Date.now()}`,
-    name: habit.name ?? 'Habit',
-    icon: habit.icon ?? '✨',
-    color: habit.color ?? '#7BDFF2',
-    createdAt: habit.createdAt ?? new Date().toISOString().split('T')[0],
-    completedDates: Array.isArray(habit.completedDates) ? habit.completedDates : [],
-    frequency,
-    customDays:
-      frequency === 'custom' && Array.isArray(habit.customDays)
-        ? Array.from(new Set(habit.customDays.filter((day) => day >= 0 && day <= 6)))
-        : [],
-    note: habit.note ?? '',
-  };
-}
-
 export function isHabitScheduledForDate(habit: Habit, date: Date | string) {
-  const target = typeof date === 'string' ? new Date(`${date}T12:00:00`) : new Date(date);
-  target.setHours(12, 0, 0, 0);
+  const target = typeof date === 'string' ? dateFromKey(date) : date;
+  if (getDateKey(target) < habit.createdAt) return false;
   const day = target.getDay();
-
-  switch (habit.frequency ?? DEFAULT_FREQUENCY) {
-    case 'weekdays':
-      return day !== 0 && day !== 6;
-    case 'custom':
-      return (habit.customDays ?? []).includes(day);
-    case 'daily':
-    default:
-      return true;
+  return habit.frequency === 'daily' || (habit.frequency === 'weekdays' && day > 0 && day < 6) ||
+    (habit.frequency === 'custom' && habit.customDays.includes(day));
+}
+export function normalizeReminder(value: unknown): Reminder | undefined {
+  if (!value || typeof value !== 'object') return undefined;
+  const r = value as Partial<Reminder>;
+  if (typeof r.enabled !== 'boolean' || !Number.isInteger(r.hour) || !Number.isInteger(r.minute) || r.hour! < 0 || r.hour! > 23 || r.minute! < 0 || r.minute! > 59) throw new Error('Invalid reminder time.');
+  return { enabled: r.enabled, hour: r.hour!, minute: r.minute! };
+}
+export function normalizeHabit(value: unknown): Habit {
+  if (!value || typeof value !== 'object') throw new Error('Invalid habit record.');
+  const h = value as Partial<Habit>;
+  if (typeof h.id !== 'string' || !h.id || typeof h.name !== 'string' || !h.name.trim() || !isDateKey(h.createdAt) || !Array.isArray(h.completedDates) || !h.completedDates.every(isDateKey)) throw new Error('Your saved habits could not be read. Your original data has been kept.');
+  const category = CATEGORIES.find(c => c.id === h.categoryId) ?? CATEGORIES.find(c => c.name.toLowerCase() === h.name!.toLowerCase()) ?? CATEGORIES[6];
+  const frequency = h.frequency ?? 'daily';
+  if (!['daily', 'weekdays', 'custom'].includes(frequency)) throw new Error('Invalid habit schedule.');
+  const customDays = Array.from(new Set((h.customDays ?? []).filter(d => Number.isInteger(d) && d >= 0 && d <= 6))).sort();
+  return { id: h.id, name: h.name.trim(), icon: typeof h.icon === 'string' ? h.icon : category.icon,
+    categoryId: category.id, color: typeof h.color === 'string' && /^#[0-9a-f]{6}$/i.test(h.color) ? h.color : category.color,
+    createdAt: h.createdAt, completedDates: [...new Set(h.completedDates)].sort(), frequency, customDays,
+    note: typeof h.note === 'string' ? h.note : '', reminder: normalizeReminder(h.reminder) };
+}
+export function getCurrentStreak(habit: Habit, today = new Date()) {
+  const done = new Set(habit.completedDates); let count = 0;
+  for (let cursor = dateOffset(today, 0); getDateKey(cursor) >= habit.createdAt; cursor = dateOffset(cursor, -1)) {
+    if (!isHabitScheduledForDate(habit, cursor)) continue;
+    if (done.has(getDateKey(cursor))) count++;
+    else if (getDateKey(cursor) !== getDateKey(today)) break;
   }
+  return count;
 }
-
-export function getMilestoneMessage(bestStreak: number) {
-  if (bestStreak >= 30) return 'Legend mode unlocked. Your routine is steady, strong, and seriously impressive.';
-  if (bestStreak >= 14) return 'You are in a beautiful rhythm. Protect it and keep stacking the wins.';
-  if (bestStreak >= 7) return 'A full week is a real win. Keep the chain alive and stay steady.';
-  if (bestStreak >= 3) return 'You are building real momentum. One more day can make this stick.';
-  return 'Tiny wins are turning into a habit. Keep showing up, even in small steps.';
-}
-
-export function getStreakMilestone(bestStreak: number) {
-  if (bestStreak >= 30) {
-    return {
-      label: '30-day legend',
-      detail: 'Consistency is your superpower. Keep protecting the streak and celebrate the rhythm.',
-    };
+export function getLongestStreak(habit: Habit, today = new Date()) {
+  const done = new Set(habit.completedDates); let running = 0; let best = 0;
+  for (let cursor = dateFromKey(habit.createdAt); getDateKey(cursor) <= getDateKey(today); cursor = dateOffset(cursor, 1)) {
+    if (!isHabitScheduledForDate(habit, cursor)) continue;
+    running = done.has(getDateKey(cursor)) ? running + 1 : 0; best = Math.max(best, running);
   }
-
-  if (bestStreak >= 14) {
-    return {
-      label: '2-week flow',
-      detail: 'The routine feels natural now. Keep the flow going and this can become your norm.',
-    };
+  return best;
+}
+export function getStats(habits: Habit[], from: Date, to = new Date()) {
+  let scheduled = 0; let completed = 0;
+  for (let day = dateOffset(from, 0); getDateKey(day) <= getDateKey(to); day = dateOffset(day, 1)) {
+    habits.forEach(h => { if (isHabitScheduledForDate(h, day)) { scheduled++; if (h.completedDates.includes(getDateKey(day))) completed++; } });
   }
-
-  if (bestStreak >= 7) {
-    return {
-      label: '1-week win',
-      detail: 'A full week is a huge accomplishment. Stay light, steady, and proud of the progress.',
-    };
-  }
-
-  if (bestStreak >= 3) {
-    return {
-      label: 'Growing streak',
-      detail: 'The habit is sticking. Keep it simple and let the chain keep growing.',
-    };
-  }
-
-  return {
-    label: 'Momentum building',
-    detail: 'Every small win matters. Today is the start of something stronger.',
-  };
+  return { scheduled, completed, percent: scheduled ? Math.round(completed / scheduled * 100) : 0 };
 }
+export function getCompletionRate(habit: Habit, today = new Date()) { return getStats([habit], dateFromKey(habit.createdAt), today).percent; }
 
-export function getDailyMotivationMessage(totalHabits: number, completedToday: number, bestStreak: number) {
-  if (totalHabits === 0) return 'Create your first habit and let the routine begin.';
-  const remaining = totalHabits - completedToday;
-  if (remaining <= 0) return `Amazing work — you completed every habit today and kept the streak glowing.`;
-  if (bestStreak >= 7) return `Strong streak: ${bestStreak} days. Finish ${remaining} more habit${remaining > 1 ? 's' : ''} and keep the rhythm alive.`;
-  if (remaining === 1) return 'You are just one tiny step away from a full day. Keep it simple and finish strong.';
-  return `You’re ${remaining} habits away from a full day. Small wins still count — keep the momentum going.`;
-}
-
-export function getCompletionRate(habit: Habit) {
-  const created = new Date(`${habit.createdAt}T12:00:00`);
-  const today = new Date();
-  today.setHours(12, 0, 0, 0);
-
-  let scheduledDays = 0;
-  let completedDays = 0;
-
-  for (let current = new Date(created); current <= today; current.setDate(current.getDate() + 1)) {
-    const key = getDateKey(current);
-    if (isHabitScheduledForDate(habit, current)) {
-      scheduledDays += 1;
-      if (habit.completedDates.includes(key)) completedDays += 1;
-    }
-  }
-
-  if (scheduledDays === 0) return 0;
-  return Math.min(100, Math.round((completedDays / scheduledDays) * 100));
-}
-
-export function buildSeedHabits(): Habit[] {
-  const today = getDateKey(new Date());
-
-  return [
-    {
-      id: 'seed-1',
-      name: 'Drink water',
-      icon: '💧',
-      color: '#4CC9F0',
-      createdAt: offsetDate(14),
-      completedDates: [offsetDate(0), offsetDate(1), offsetDate(2), offsetDate(3), offsetDate(5), offsetDate(6), today],
-      frequency: 'daily',
-      customDays: [],
-      note: 'A quick reset for the day.',
-    },
-    {
-      id: 'seed-2',
-      name: 'Read story',
-      icon: '📚',
-      color: '#FFB703',
-      createdAt: offsetDate(19),
-      completedDates: [offsetDate(0), offsetDate(1), offsetDate(2), offsetDate(4), offsetDate(6), today],
-      frequency: 'daily',
-      customDays: [],
-      note: 'Even ten pages helps.',
-    },
-    {
-      id: 'seed-3',
-      name: 'Stretch time',
-      icon: '🧘',
-      color: '#8AC926',
-      createdAt: offsetDate(10),
-      completedDates: [offsetDate(0), offsetDate(1), offsetDate(3), offsetDate(4), offsetDate(7), today],
-      frequency: 'weekdays',
-      customDays: [],
-      note: 'Keep the body feeling good.',
-    },
-  ];
-}
-
-export async function loadHabits(): Promise<Habit[]> {
-  try {
-    const raw = await AsyncStorage.getItem(STORAGE_KEY);
-    if (!raw) {
-      const seeded = buildSeedHabits();
-      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(seeded));
-      return seeded;
-    }
-
-    const parsed = JSON.parse(raw) as Habit[];
-    const normalized = Array.isArray(parsed) ? parsed.map(normalizeHabit) : [];
-    return normalized;
-  } catch (error) {
-    console.warn('Unable to load habits', error);
-    return [];
-  }
-}
-
-export async function saveHabits(habits: Habit[]) {
-  const normalized = habits.map(normalizeHabit);
-  await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(normalized));
-}

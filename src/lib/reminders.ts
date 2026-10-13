@@ -1,122 +1,43 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import Constants from 'expo-constants';
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
-
-export type ReminderSettings = {
-  enabled: boolean;
-  hour: number;
-  minute: number;
-};
-
-export type ReminderAvailability = {
-  available: boolean;
-  scheduled: boolean;
-  reason?: string;
-};
-
-export const REMINDER_SETTINGS_KEY = 'habit-reminder-settings-v1';
-
-export const DEFAULT_REMINDER_SETTINGS: ReminderSettings = {
-  enabled: true,
-  hour: 8,
-  minute: 0,
-};
-
-export function formatReminderTime(hour: number, minute = 0) {
-  const safeHour = ((hour % 24) + 24) % 24;
-  const period = safeHour >= 12 ? 'PM' : 'AM';
-  const normalizedHour = safeHour % 12 === 0 ? 12 : safeHour % 12;
-  return `${normalizedHour}:${String(minute).padStart(2, '0')} ${period}`;
-}
-
-export async function loadReminderSettings(): Promise<ReminderSettings> {
-  try {
-    const raw = await AsyncStorage.getItem(REMINDER_SETTINGS_KEY);
-    if (!raw) return DEFAULT_REMINDER_SETTINGS;
-
-    const parsed = JSON.parse(raw) as Partial<ReminderSettings>;
-    return {
-      enabled: typeof parsed.enabled === 'boolean' ? parsed.enabled : DEFAULT_REMINDER_SETTINGS.enabled,
-      hour: typeof parsed.hour === 'number' ? Math.min(23, Math.max(0, Math.floor(parsed.hour))) : DEFAULT_REMINDER_SETTINGS.hour,
-      minute: typeof parsed.minute === 'number' ? Math.min(59, Math.max(0, Math.floor(parsed.minute))) : DEFAULT_REMINDER_SETTINGS.minute,
-    };
-  } catch (error) {
-    return DEFAULT_REMINDER_SETTINGS;
-  }
-}
-
-export async function saveReminderSettings(nextSettings: ReminderSettings) {
-  await AsyncStorage.setItem(REMINDER_SETTINGS_KEY, JSON.stringify(nextSettings));
-}
-
-export async function updateReminderSchedule(settings: ReminderSettings): Promise<ReminderAvailability> {
-  if (Platform.OS === 'web') {
-    return {
-      available: false,
-      scheduled: false,
-      reason: 'Notifications are not available in the web preview.',
-    };
-  }
-
-  const isExpoGo = Constants.appOwnership === 'expo';
-  if (Platform.OS === 'android' && isExpoGo) {
-    return {
-      available: false,
-      scheduled: false,
-      reason: 'Android push notifications require a development build. Expo Go does not support this feature.',
-    };
-  }
-
-  try {
-    Notifications.setNotificationHandler({
-      handleNotification: async () => ({
-        shouldShowAlert: true,
-        shouldPlaySound: true,
-        shouldSetBadge: false,
-        shouldShowBanner: true,
-        shouldShowList: true,
-      }),
+import { AppData } from './model';
+const OWNER = 'penguin-task';
+export function formatReminderTime(hour: number, minute = 0) { return `${hour % 12 || 12}:${String(minute).padStart(2, '0')} ${hour >= 12 ? 'PM' : 'AM'}`; }
+export async function syncReminders(data: AppData, askPermission = false): Promise<string | null> {
+  if (Platform.OS === 'web') return data.profile.dailyReminder.enabled || data.habits.some(h => h.reminder?.enabled) ? 'Reminders work in the Android and iOS app.' : null;
+  Notifications.setNotificationHandler({ handleNotification: async () => ({ shouldShowBanner: true, shouldShowList: true, shouldPlaySound: data.profile.sound, shouldSetBadge: false }) });
+  // Cancel only notifications owned by this app feature. A retry reconciles partial schedules.
+  const scheduled = await Notifications.getAllScheduledNotificationsAsync();
+  await Promise.all(scheduled.filter(n => n.content.data?.owner === OWNER).map(n => Notifications.cancelScheduledNotificationAsync(n.identifier)));
+  const enabled = data.profile.dailyReminder.enabled || data.habits.some(h => h.reminder?.enabled);
+  if (!enabled) return null;
+  if (Platform.OS === 'android') {
+    await Notifications.setNotificationChannelAsync(data.profile.sound ? 'habits-sound' : 'habits-quiet', {
+      name: data.profile.sound ? 'Habit reminders' : 'Quiet habit reminders',
+      importance: Notifications.AndroidImportance.DEFAULT, sound: data.profile.sound ? 'default' : null,
     });
-
-    const permissions = await Notifications.getPermissionsAsync();
-    if (permissions.status !== 'granted') {
-      const requested = await Notifications.requestPermissionsAsync();
-      if (requested.status !== 'granted') {
-        return {
-          available: false,
-          scheduled: false,
-          reason: 'Notification permission was not granted.',
-        };
-      }
-    }
-
-    await Notifications.cancelAllScheduledNotificationsAsync();
-
-    if (!settings.enabled) {
-      return { available: true, scheduled: false };
-    }
-
+  }
+  let permission = await Notifications.getPermissionsAsync();
+  if (!permission.granted && askPermission) permission = await Notifications.requestPermissionsAsync();
+  if (!permission.granted) return 'Notifications are off in device settings. Your reminder times have been saved.';
+  const channelId = data.profile.sound ? 'habits-sound' : 'habits-quiet';
+  const schedule = async (id: string, body: string, hour: number, minute: number, weekday?: number, habitId?: string) => {
     await Notifications.scheduleNotificationAsync({
-      content: {
-        title: 'HabitFlow reminder',
-        body: 'Your habits are waiting for you today ✨',
-        sound: 'default',
-      },
-      trigger: {
-        hour: settings.hour,
-        minute: settings.minute,
-        repeats: true,
-      } as any,
+      identifier: `penguin:${id}`,
+      content: { title: 'Penguin Task', body, sound: data.profile.sound ? 'default' : false, data: { owner: OWNER, habitId: habitId ?? '' } },
+      trigger: weekday === undefined
+        ? { type: Notifications.SchedulableTriggerInputTypes.DAILY, hour, minute, channelId }
+        : { type: Notifications.SchedulableTriggerInputTypes.WEEKLY, weekday: weekday + 1, hour, minute, channelId },
     });
-
-    return { available: true, scheduled: true };
-  } catch (error) {
-    console.warn('Local reminder scheduling is unavailable in the current environment:', error);
-    return {
-      available: false,
-      scheduled: false,
-      reason: 'Local reminders are unavailable in this Expo Go environment.',
-    };
+  };
+  const daily = data.profile.dailyReminder;
+  if (daily.enabled) await schedule('daily', 'Small steps, big dreams. A little progress is waiting for you.', daily.hour, daily.minute);
+  for (const habit of data.habits) {
+    const reminder = habit.reminder; if (!reminder?.enabled) continue;
+    const days = habit.frequency === 'daily' ? undefined : habit.frequency === 'weekdays' ? [1, 2, 3, 4, 5] : habit.customDays;
+    if (days) { for (const day of days) await schedule(`${habit.id}:${day}`, `Time for ${habit.name}. You’ve got this!`, reminder.hour, reminder.minute, day, habit.id); }
+    else await schedule(habit.id, `Time for ${habit.name}. You’ve got this!`, reminder.hour, reminder.minute, undefined, habit.id);
   }
+  return null;
 }
+
