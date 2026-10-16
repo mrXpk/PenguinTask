@@ -3,5 +3,15 @@
     "source.fixAll": "explicit",
     "source.organizeImports": "explicit",
     "source.sortMembers": "explicit"
+  },
+  "chat.tools.terminal.autoApprove": {
+    "/^node --version; npm --version; npm ls expo expo-dev-client expo-router --depth=0$/": {
+      "approve": true,
+      "matchCommandLine": true
+    },
+    "/^npx expo config --type public$/": {
+      "approve": true,
+      "matchCommandLine": true
+    }
   }
 }
